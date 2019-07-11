@@ -16,12 +16,16 @@
 
 // Value to floor for Caesar
 // 65 - CAESAR = 0
-#define CAESAR 65
+#define U_CAESAR 65
+#define L_CAESAR 97
 
 // Signatures
-void normalize(std::string &input);
-void vigenere(std::string &input, std::string &key);
-//char calculate(int inchar, int offset);
+//void normalize(std::string &input);
+bool inBounds(int inchar);
+int getFloor(int inchar);
+int caesar(int inchar, int offset);
+int getKeyChar(std::string& key, int pos);
+void vigenere2(std::string& input, std::string& key);
 
 int main (int argc, char *argv[]) {
     std::string key;
@@ -33,10 +37,10 @@ int main (int argc, char *argv[]) {
     std::cout << "Phrase  : ";
     std::getline(std::cin, input);
 
-    normalize(key);
-    normalize(input);
+    //normalize(key);
+    //normalize(input);
 
-    vigenere(input, key);
+    vigenere2(input, key);
 
     std::cout << "Result  : " << input << std::endl;
 
@@ -48,47 +52,71 @@ int main (int argc, char *argv[]) {
     return 0;
 }
 
-// Normalize the input to contain only uppercase letters
-void normalize(std::string &input) {
-    for (auto i = 0; i < input.length(); i++) {
-        // if in lower ASCII range
-        if (input[i] >= LLB && input[i] <= LUB) {
-            input[i] -= 32;
-        } 
-        
-        // if outside of higher ASCII range
-        else if (!(input[i] >= ULB && input[i] <= UUB)) {
-            input[i] = SPACE;
-        }
-    }
+// Check whether the character is withing one of our two bounds
+// TODO: Make this whole thing more DRY
+bool inBounds(int inchar) {
+	if (inchar >= LLB && inchar <= LUB) {
+		return true;
+	}
+	else if (inchar >= ULB && inchar <= UUB) {
+		return true;
+	}
+
+	return false;
 }
 
-// Perform the vigenere cipher
-void vigenere(std::string &input, std::string &key) {
-    const auto key_length = key.length();
-    auto key_step = 0;
+// Get the bound floor for the select character
+// TODO: Make this whole thing more DRY
+int getFloor(int inchar) {
+	if (inchar >= LLB && inchar <= LUB) {
+		return L_CAESAR;
+	}
+	else if (inchar >= ULB && inchar <= UUB) {
+		return U_CAESAR;
+	}
 
-    // calculate the caesar cipher for the character
-    auto calculate = [](auto inchar, auto offset) {
-        if (inchar == SPACE) {
-            return SPACE;
-        }
+	return false;
+}
 
-        return (((inchar + offset) - (CAESAR * 2)) % 26) + CAESAR;
-    };
+// Calculate the caesar cipher for the character
+int caesar(int inchar, int offset) {
+	auto floor = getFloor(inchar);
 
-    for (auto i = 0; i < input.length(); i++) {
-        if (key[key_step] == SPACE) {
-            key_step++;
-        }
+	return (((inchar + offset) - (floor * 2)) % 26) + floor;
+}
 
-        if (key_step == key_length) {
-            key_step = 0;
-        }
+// Get the next valid key character
+// TODO: handle edge cases better
+int getKeyChar(std::string& key, int pos) {
+	auto brk = 0;
 
-        if (input[i] != SPACE) {
-            input[i] = calculate(input[i], key[key_step]);
-            key_step++;
-        }
-    }
+	// loop through the key to get the next valid character
+	while (brk < key.length()) {
+		if (pos > key.length()) {
+			pos = 0;
+		}
+
+		if (inBounds(key[pos])) {
+			return key[pos];
+		}
+
+		brk++;
+		pos++;
+	}
+}
+
+void vigenere2(std::string& input, std::string& key) {
+	auto key_pos = 0;
+	char key_char;
+
+	for (auto i = 0; i < input.length(); i++) {
+		if (inBounds(input[i])) {
+
+			// BUG: If the key has invalid characters this will not track the position right
+			key_char = getKeyChar(key, key_pos);
+			key_pos++;
+
+			input[i] = caesar(input[i], key_char);
+		}
+	}
 }
